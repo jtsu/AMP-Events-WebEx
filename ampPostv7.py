@@ -77,8 +77,11 @@ def vulnEvents():
 if __name__ == '__main__':
 
     amqp_info = create_stream()
-    amqp_channel = start_stream(amqp_info)
-    amqp_channel.staert
+    if amqp_info is not False:
+        amqp_channel = start_stream(amqp_info)
+        amqp_channel.start_consuming()
+    else:
+        print("Issue With AMQP info")
     
     #Save All Events to local file
     #saveEvents("savedAll", getEvents())
