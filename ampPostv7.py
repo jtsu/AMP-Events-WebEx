@@ -2,7 +2,7 @@ import requests
 import json
 import sys
 import config
-
+from eventstream import start_stream, create_stream
 
 # Function to get AMP events
 def getEvents():
@@ -76,11 +76,14 @@ def vulnEvents():
 
 if __name__ == '__main__':
 
-
+    amqp_info = create_stream()
+    amqp_channel = start_stream(amqp_info)
+    amqp_channel.staert
+    
     #Save All Events to local file
     #saveEvents("savedAll", getEvents())
 
-
+    
     #post Scan Details
     post (json.dumps(scanEvents(),indent=4))
 
