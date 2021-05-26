@@ -2,7 +2,7 @@ import requests
 import json
 import sys
 import config
-
+from eventstream import start_stream, create_stream
 
 # Function to get AMP events
 def getEvents():
@@ -79,7 +79,17 @@ if __name__ == '__main__':
 
     #Save All Events to local file
     #saveEvents("savedAll", getEvents())
-
+    amqp_info = create_stream()
+    if amqp_info is not False:
+        if amqp_info == 400:
+            amqp_info = create_stream()
+        # Setting up the event stream and creating the event channl
+        amqp_channel = start_stream(amqp_info)
+        # Starting the event channel the system will now wait and act like a service and wait
+        # for new messages to come in and proccess the messages
+        amqp_channel.start_consuming()
+    else:
+        print("Issue With AMQP info")
 
     #post Scan Details
     post (json.dumps(scanEvents(),indent=4))
