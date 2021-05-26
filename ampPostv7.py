@@ -4,13 +4,14 @@ import sys
 import config
 from eventstream import start_stream, create_stream
 
+
 # Function to get AMP events
 def getEvents():
 
-    request = requests.get(config.amp_url, auth=(
-        config.amp_client_id, config.amp_api_key))
+    request = requests.get(config.amp_url,
+                           auth=(config.amp_client_id, config.amp_api_key))
 
-    return(request.json())
+    return (request.json())
 
 
 # Function for posting a message to a WebEx space using incoming webhooks.
@@ -33,7 +34,7 @@ def post(message):
 # Function to save message to file
 def saveEvents(filename, message):
 
-    saveFile = filename +".cfg"
+    saveFile = filename + ".cfg"
     with open(saveFile, "w") as f:
         f.write(json.dumps(message, indent=4))
         print(saveFile + ": Successfully written.")
@@ -49,12 +50,12 @@ def scanEvents():
                 message.append(d['computer']['hostname'])
                 message.append(d['date'])
                 message.append(d['timestamp'])
-                message.append(d["scan"]) 
+                message.append(d["scan"])
 
         else:
             continue
 
-    return(message)
+    return (message)
 
 
 def vulnEvents():
@@ -68,28 +69,33 @@ def vulnEvents():
                 s = float(i['score'])
 
                 if s >= targetScore:
-                    message.append("[" + str(i['cve']) + "](" + str(i['url']) + "): Score = " + str(i['score']) +"<br/>")
+                    message.append("[" + str(i['cve']) + "](" + str(i['url']) +
+                                   "): Score = " + str(i['score']) + "<br/>")
         else:
             continue
-    return(message)
+    return (message)
 
 
 if __name__ == '__main__':
 
+    #Calling the AMP event stream creates
     amqp_info = create_stream()
     if amqp_info is not False:
+        if amqp_info == 400:
+            amqp_info = create_stream()
+        #Setting up the event stream and creating the event channl
         amqp_channel = start_stream(amqp_info)
+        #Starting the event channel the system will now wait and act like a service and wait
+        #for new messages to come in and proccess the messages
         amqp_channel.start_consuming()
     else:
         print("Issue With AMQP info")
-    
+
     #Save All Events to local file
     #saveEvents("savedAll", getEvents())
 
-    
     #post Scan Details
-    post (json.dumps(scanEvents(),indent=4))
-
+    post(json.dumps(scanEvents(), indent=4))
 
     #Get filtered CVE related events
     vulnMsgs = vulnEvents()
@@ -101,9 +107,9 @@ if __name__ == '__main__':
     n = 25
     splitVulnMsgs = [vulnMsgs[i:i + n] for i in range(0, len(vulnMsgs), n)]
 
-    #post CVE list to webex 
+    #post CVE list to webex
     for i in splitVulnMsgs:
         msgPost = json.dumps(''.join(map(str, i)))
 
-        print (msgPost)
+        print(msgPost)
         #post(msgPost)
