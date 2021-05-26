@@ -1,6 +1,5 @@
 import requests
 import json
-import sys
 import config
 
 
@@ -11,6 +10,10 @@ def getEvents():
         config.amp_client_id, config.amp_api_key))
 
     return(request.json())
+
+
+
+    
 
 
 # Function for posting a message to a WebEx space using incoming webhooks.
@@ -46,6 +49,7 @@ def scanEvents():
 
         if "event_type" in d.keys():
             if d["event_type"] == "Scan Completed, No Detections":
+                message.append(d['event_type'])
                 message.append(d['computer']['hostname'])
                 message.append(d['date'])
                 message.append(d['timestamp'])
@@ -57,47 +61,66 @@ def scanEvents():
     return(message)
 
 
+
 def vulnEvents():
+        
     targetScore = 10
     message = []
 
     for d in getEvents()["data"]:
 
-        if "vulnerabilities" in d.keys():
-            for i in d["vulnerabilities"]:
-                s = float(i['score'])
-
-                if s >= targetScore:
-                    message.append("[" + str(i['cve']) + "](" + str(i['url']) + "): Score = " + str(i['score']) +"<br/>")
+        if "event_type" in d.keys():
+            if d["event_type"] == "Vulnerable Application Detected":
+                message.append(d['event_type'])
+                
+                
+                if "vulnerabilities" in d.keys():
+                    for i in d["vulnerabilities"]:
+                        s = float(i['score'])
+        
+                        if s >= targetScore:
+                            message.append("[" + str(i['cve']) + "](" + str(i['url']) + "): Score = " + str(i['score']) +"<br/>")
+                else:
+                    continue
+                
         else:
             continue
+
     return(message)
+
+
 
 
 if __name__ == '__main__':
 
 
-    #Save All Events to local file
+    #####  Save All Events to local file  #####
     #saveEvents("savedAll", getEvents())
 
 
-    #post Scan Details
-    post (json.dumps(scanEvents(),indent=4))
-
-
-    #Get filtered CVE related events
+    #####  Get filtered CVE related events  #####
     vulnMsgs = vulnEvents()
+    print (len(vulnMsgs))
 
-    # if dataset is too large, webex will not post message correctly
-    # splitting list, each sub-list of size n elements
+    # If dataset is too large, webex will not post the message correctly.
+    # So following is to split the list, each sub-list of size n elements
 
     # How many elements each list should have
     n = 25
+    
     splitVulnMsgs = [vulnMsgs[i:i + n] for i in range(0, len(vulnMsgs), n)]
 
     #post CVE list to webex 
     for i in splitVulnMsgs:
         msgPost = json.dumps(''.join(map(str, i)))
 
-        print (msgPost)
-        #post(msgPost)
+        #print (msgPost)
+        post(msgPost)
+        
+        
+    #####  post Scan Details  ######
+    post (json.dumps(scanEvents(),indent=4))
+    
+    
+    
+    
