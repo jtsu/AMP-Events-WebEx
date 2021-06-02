@@ -1,8 +1,13 @@
+import time
 import requests
 import json
-import sys
+from webexteamssdk import WebexTeamsAPI
 import config
-from eventstream import start_stream, create_stream
+
+
+# https://webexteamssdk.readthedocs.io/en/latest/index.html
+api = WebexTeamsAPI()
+
 
 # Function to get AMP events
 def getEvents():
@@ -13,24 +18,33 @@ def getEvents():
     return(request.json())
 
 
-# Function for posting a message to a WebEx space using incoming webhooks.
-# The webhooks url is defined in config.py
-def post(message):
-
-    response = requests.post(config.url,
-                             headers={"Content-Type": "application/json"},
-                             data=json.dumps({"markdown": message}),
-                             verify=True)
-
-    if response.status_code == 200 or response.status_code == 204:
-        print("Successfully posted to WebEx.")
-        print("  Status Code: %d" % response.status_code)
-    else:
-        print("Failed to post to WebEx.")
-        print("  Status Code: %d" % response.status_code)
+# Create a webex room
+def webexCreateRoom(roomName):
+    return (api.rooms.create(roomName))
 
 
-# Function to save message to file
+# delete webex room
+def webexDeleteRoom(roomName):
+    all_rooms = api.rooms.list()
+    demo_rooms = [room for room in all_rooms if roomName in room.title]
+
+    # Delete all of the demo rooms
+    for room in demo_rooms:
+        api.rooms.delete(room.id)
+        print("Room '{}' deleted.".format(room.id))
+
+# Add user to webex room
+def webexAddUsers(email, id):
+    api.memberships.create(id, personEmail=email)
+
+
+#check if webex room exists
+def webexRoomExist(roomName):
+    all_rooms = api.rooms.list()
+    existing_rooms = [room for room in all_rooms if roomName in room.title]
+    return (existing_rooms)
+
+# Save message to file for testing
 def saveEvents(filename, message):
 
     saveFile = filename +".cfg"
@@ -43,17 +57,15 @@ def scanEvents():
     message = []
 
     for d in getEvents()["data"]:
-
         if "event_type" in d.keys():
             if d["event_type"] == "Scan Completed, No Detections":
+                message.append(d['event_type'])
                 message.append(d['computer']['hostname'])
                 message.append(d['date'])
                 message.append(d['timestamp'])
-                message.append(d["scan"]) 
-
+                message.append(d["scan"])
         else:
             continue
-
     return(message)
 
 
@@ -62,52 +74,63 @@ def vulnEvents():
     message = []
 
     for d in getEvents()["data"]:
+        if "event_type" in d.keys():
+            if d["event_type"] == "Vulnerable Application Detected":
+                message.append(d['event_type'])
 
-        if "vulnerabilities" in d.keys():
-            for i in d["vulnerabilities"]:
-                s = float(i['score'])
+                if "vulnerabilities" in d.keys():
+                    for i in d["vulnerabilities"]:
+                        s = float(i['score'])
 
-                if s >= targetScore:
-                    message.append("[" + str(i['cve']) + "](" + str(i['url']) + "): Score = " + str(i['score']) +"<br/>")
+                        if s >= targetScore:
+                            message.append("[" + str(i['cve']) + "](" + str(i['url']) + "): Score = " + str(i['score']) +"<br/>")
+                else:
+                    continue
         else:
             continue
     return(message)
 
 
+
 if __name__ == '__main__':
 
+    roomName = 'AMP_Testing-UNC'
+    email = 'jtsu@cisco.com'
 
-    #Save All Events to local file
-    #saveEvents("savedAll", getEvents())
-    amqp_info = create_stream()
-    if amqp_info is not False:
-        if amqp_info == 400:
-            amqp_info = create_stream()
-        # Setting up the event stream and creating the event channl
-        amqp_channel = start_stream(amqp_info)
-        # Starting the event channel the system will now wait and act like a service and wait
-        # for new messages to come in and proccess the messages
-        amqp_channel.start_consuming()
+    if webexRoomExist(roomName):
+        print("Found {} existing room(s)."
+          "".format(len(webexRoomExist(roomName))))
+        for room in webexRoomExist(roomName):
+            demo_room = room
+            print (room.id)
     else:
-        print("Issue With AMQP info")
+        demo_room = webexCreateRoom(roomName)
+        webexAddUsers(email, demo_room.id)
+    
 
-    #post Scan Details
-    post (json.dumps(scanEvents(),indent=4))
+    #####  Save All Events to local file  #####
+    #saveEvents("savedAll", getEvents())
 
 
-    #Get filtered CVE related events
+    #####  Get filtered CVE related events  #####
     vulnMsgs = vulnEvents()
+    # print (len(vulnMsgs))
 
-    # if dataset is too large, webex will not post message correctly
-    # splitting list, each sub-list of size n elements
+    # If dataset is too large, webex will not post the message correctly.
+    # So following is to split the list, each sub-list of size n elements
 
     # How many elements each list should have
     n = 25
-    splitVulnMsgs = [vulnMsgs[i:i + n] for i in range(0, len(vulnMsgs), n)]
 
-    #post CVE list to webex 
+    splitVulnMsgs = [vulnMsgs[i:i + n] for i in range(0, len(vulnMsgs), n)]
+    
+
+    # Post CVE list to WebEx Room
     for i in splitVulnMsgs:
         msgPost = json.dumps(''.join(map(str, i)))
+        time.sleep(3)
+        api.messages.create(demo_room.id, markdown=json.dumps(msgPost))
 
-        print (msgPost)
-        #post(msgPost)
+
+    # Post Client Scan Details to WebEx Room
+    api.messages.create(demo_room.id, markdown=json.dumps(scanEvents()))
