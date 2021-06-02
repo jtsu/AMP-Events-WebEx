@@ -95,7 +95,7 @@ def vulnEvents():
 if __name__ == '__main__':
 
     roomName = 'AMP_Testing-UNC'
-    email = 'jtsu@cisco.com'
+    email = 'email@address.com'
 
     if webexRoomExist(roomName):
         print("Found {} existing room(s)."
