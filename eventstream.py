@@ -1,9 +1,9 @@
 import json
-
 import pika
 import requests
 import ssl
 import config
+from webexteamssdk import WebexTeamsAPI
 
 
 def _post_stream(event_name: str):
@@ -78,6 +78,33 @@ def create_stream():
         return False
 
 
+def process(data):
+    """
+    Function to filter the data for the specific event types in our list.
+    List of  event types can be found here:
+      https://api-docs.amp.cisco.com/api_actions/details?api_action=GET+%2Fv1%2Fevent_types&api_host=api.apjc.amp.cisco.com&api_resource=Event+Type&api_version=v1
+    """
+    filter = {
+        "filter": ["Scan Started", "Scan Completed, No Detections", \
+        "Scan Completed With Detections", "Scan Failed", "Vulnerable Application Detected"]
+        }
+
+    if data["event_type"] in filter["filter"]:
+        if data["event_type"] == "Vulnerable Application Detected": 
+            if data["vulnerabilities"]["score"] >= 10:
+                return {
+                       "event_type": data["event_type"],
+                       "cve": data["vulnerabilities"]["cve"],
+                       "score": data["vulnerabilities"]["score"],
+                       "url": data["vulnerabilities"]["url"]
+                }
+        else:
+            return {
+                   "event_type": data["event_type"],
+                   "computer_name": data["computer"]["hostname"]
+            }
+
+
 def callback(channel, method, proterties, body):
     """
 	Function is called when a new event is received from the event stream
@@ -90,7 +117,23 @@ def callback(channel, method, proterties, body):
 	:return:
 	"""
     # Function Print Event to screen use this function to call the Webex Teams SDK
-    print(body)
+    # But first need to Decode UTF-8 bytes to Unicode, and convert single quotes
+    # to double quotes to make it valid JSON
+    my_json = body.decode('utf8').replace("'", '"')
+
+    # Load the JSON to a Python list & dump it back out as formatted JSON
+    json_data = json.loads(my_json)
+
+    # run the data through the filters
+    dataset  = process(json_data)
+
+    # Using the Webex SDK. More info can be found here: https://webexteamssdk.readthedocs.io/en/latest/index.html
+    webex = WebexTeamsAPI()
+
+    # Post the filtered dataset to the webex room
+    webex.messages.create(config.webex_room_id, markdown=json.dumps(dataset))
+    print(dataset)
+    print('- ' * 20)
 
 
 def start_stream(amqp_info):

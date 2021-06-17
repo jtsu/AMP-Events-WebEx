@@ -1,8 +1,13 @@
-# Incoming Webhooks URL
-url = "https://webexapis.com/v1/webhooks/incoming/XXXXX"
+
 # amp Events Creds
-amp_client_id = 'xxxx'
+amp_client_id = 'XXX'
+amp_api_key = 'XXX-XXX-XXX'
 
-amp_api_key = 'xxxx'
+#webex room ID
+webex_room_id = 'XXXXX'
 
-amp_url = 'https://api.amp.cisco.com/v1/events'
+# set env variable for webex access token
+# export WEBEX_TEAMS_ACCESS_TOKEN=XXXXX-XX-XXX
+
+#Event Stream API
+amp_stream_url = 'https://api.amp.cisco.com/v1/event_streams'
