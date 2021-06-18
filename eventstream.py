@@ -56,7 +56,7 @@ def create_stream():
 		If stream exisits today the code will dele the stream and recreate a new stream with the same name the if you get an erro running the script re run and it will work
 	:return:
 	"""
-    event_name = "Real Time Stream"
+    event_name = "Test Stream2"
     amqp_info = _post_stream(event_name)
     if amqp_info is not False and amqp_info != 400:
         return amqp_info
@@ -90,7 +90,7 @@ def process(data):
         }
 
     if data["event_type"] in filter["filter"]:
-        if data["event_type"] == "Vulnerable Application Detected": 
+        if data["event_type"] == "Vulnerable Application Detected":
             if data["vulnerabilities"]["score"] >= 10:
                 return {
                        "event_type": data["event_type"],
@@ -116,13 +116,9 @@ def callback(channel, method, proterties, body):
 	:param body:Body of the message in Byte JSON Format
 	:return:
 	"""
-    # Function Print Event to screen use this function to call the Webex Teams SDK
-    # But first need to Decode UTF-8 bytes to Unicode, and convert single quotes
-    # to double quotes to make it valid JSON
-    my_json = body.decode('utf8').replace("'", '"')
-
-    # Load the JSON to a Python list & dump it back out as formatted JSON
-    json_data = json.loads(my_json)
+    
+    # Convert the data from Byte format
+    json_data = json.loads(body)
 
     # run the data through the filters
     dataset  = process(json_data)
@@ -133,7 +129,7 @@ def callback(channel, method, proterties, body):
     # Post the filtered dataset to the webex room
     webex.messages.create(config.webex_room_id, markdown=json.dumps(dataset))
     print(dataset)
-    print('- ' * 20)
+    print('- ' * 30)
 
 
 def start_stream(amqp_info):
