@@ -116,12 +116,13 @@ def callback(channel, method, proterties, body):
 	:param body:Body of the message in Byte JSON Format
 	:return:
 	"""
-    
-    # Convert the data from Byte format
+
+    # Convert the data from Byte format to Dict
     json_data = json.loads(body)
 
     # run the data through the filters
     dataset  = process(json_data)
+
 
     # Using the Webex SDK. More info can be found here: https://webexteamssdk.readthedocs.io/en/latest/index.html
     webex = WebexTeamsAPI()

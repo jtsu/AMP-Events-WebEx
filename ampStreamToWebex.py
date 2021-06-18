@@ -1,15 +1,7 @@
-import requests
-import json
-import config
 from eventstream import start_stream, create_stream
 
 
 if __name__ == '__main__':
-
-
-    print  ("Verify Stream")
-    request = requests.get(config.amp_stream_url, auth=(config.amp_client_id, config.amp_api_key))
-    print (json.dumps(request.json(),indent=4))
 
     amqp_info = create_stream()
 
