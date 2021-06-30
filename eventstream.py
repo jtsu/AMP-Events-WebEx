@@ -123,9 +123,8 @@ def callback(channel, method, proterties, body):
     # run the data through the filters
     dataset  = process(json_data)
 
-
     # Using the Webex SDK. More info can be found here: https://webexteamssdk.readthedocs.io/en/latest/index.html
-    webex = WebexTeamsAPI()
+    webex = WebexTeamsAPI(access_token = config.webex_access_token)
 
     # Post the filtered dataset to the webex room
     webex.messages.create(config.webex_room_id, markdown=json.dumps(dataset))

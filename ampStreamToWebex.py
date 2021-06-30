@@ -3,6 +3,7 @@ from eventstream import start_stream, create_stream
 
 if __name__ == '__main__':
 
+    print ("Creating stream.")
     amqp_info = create_stream()
 
     if amqp_info is not False:
